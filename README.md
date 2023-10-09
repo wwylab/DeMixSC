@@ -14,7 +14,7 @@ Note: DeMixSC requires a matched tissue type between the small benchmark dataset
 
 <figure>
   <img src="./figures/framework.png" width="800px"/>
-  <figcaption>Rescource: Figure 1 in the [DeMixSC manuscript](link).</figcaption>
+  <figcaption>Rescource: Figure 1 from the DeMixSC manuscript.</figcaption>
 </figure>
 
 # Usage
