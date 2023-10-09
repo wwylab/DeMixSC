@@ -6,15 +6,15 @@ Please refer to our [preprint](link) for details of DeMixSC.
 # Framework overview
 DeMixSC offers accurate cell-type deconvolution for large bulk RNA-seq datasets through a two-tier procedure.  
 
-First, DeMixSC utilizes a specifically designed benchmark dataset to identify and adjust genes with high inter-platform discrepancies (Fig.A). 
+First, DeMixSC utilizes a specifically designed benchmark dataset to identify and adjust genes with high inter-platform discrepancies (Fig.1A). 
 
-Second, to deconvolve a large unmatched bulk RNA-seq dataset, DeMixSC aligns it with the benchmark dataset (Fig.B) and then employs a refined weighted non-negative least square (wNNLS) framework for deconvolution (Fig.C).
+Second, to deconvolve a large unmatched bulk RNA-seq dataset, DeMixSC aligns it with the benchmark dataset (Fig.1B) and then employs a refined weighted non-negative least square (wNNLS) framework for deconvolution (Fig.1C).
 
 Note: DeMixSC requires a matched tissue type between the small benchmark dataset and the large targeted cohort.
 
 <figure>
   <img src="./figures/framework.png" width="800px"/>
-  <figcaption>Rescource: Figure 2 from the DeMixSC manuscript.</figcaption>
+  <figcaption>Rescource: Figure 1, Workflow of DeMixSC ([Guo et al. 2023](link)).</figcaption>
 </figure>
 
 # Usage
