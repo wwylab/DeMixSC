@@ -13,7 +13,8 @@ Second, to deconvolve a large unmatched bulk RNA-seq dataset, DeMixSC aligns it 
 Note: DeMixSC requires a matched tissue type between the small benchmark dataset and the large targeted cohort.
 
 <div align="center">
-  <img src="./figures/framework.png" width="800px"/>\\
+  <img src="./figures/framework.png" width="800px"/>
+  
   <figcaption>Rescource: Figure 1 in the DeMixSC manuscript </figcaption>
 </div>
 
