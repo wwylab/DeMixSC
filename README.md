@@ -1,7 +1,7 @@
 # DeMixSC for bulk RNA-seq deconvolution
 
 DeMixSC is a generalizable framework designed to leverage single-cell sequencing and a small benchmark dataset for bulk RNA-seq deconvolution.
-Please refer to our [preprint](link) for details of DeMixSC.
+Please refer to our [preprint](https://www.biorxiv.org/content/10.1101/2023.10.10.561733v1) for details of DeMixSC.
 
 # Framework overview
 DeMixSC offers accurate cell-type deconvolution for large bulk RNA-seq datasets through a two-tier procedure.  
@@ -14,7 +14,7 @@ Note: DeMixSC requires a matched tissue type between the small benchmark dataset
 
 <figure>
   <img src="./figures/framework.png" width="800px"/>
-  <figcaption>Rescource: Figure 1, Workflow of DeMixSC ([Guo et al. 2023](link)).</figcaption>
+  <figcaption>Rescource: Figure 1, Workflow of DeMixSC ([Guo et al. 2023](https://www.biorxiv.org/content/10.1101/2023.10.10.561733v1)).</figcaption>
 </figure>
 
 # Usage
