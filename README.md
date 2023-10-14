@@ -14,7 +14,7 @@ Note: DeMixSC requires a matched tissue type between the small benchmark dataset
 
 <figure>
   <img src="./figures/framework.png" width="800px"/>
-  <figcaption>Rescource: Figure 1, Workflow of DeMixSC ([Guo et al. 2023](https://www.biorxiv.org/content/10.1101/2023.10.10.561733v1)).</figcaption>
+  <figcaption>Rescource: Figure 1, Workflow of DeMixSC (Guo et al. 2023, doi: https://doi.org/10.1101/2023.10.10.561733).</figcaption>
 </figure>
 
 # Usage
