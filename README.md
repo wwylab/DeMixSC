@@ -1,7 +1,7 @@
 # DeMixSC for bulk RNA-seq deconvolution
 
 DeMixSC is a generalizable framework designed to leverage single-cell sequencing and a small benchmark dataset for bulk RNA-seq deconvolution.
-Please refer to our [preprint](https://www.biorxiv.org/content/10.1101/2023.10.10.561733v1) for details of DeMixSC.
+Please refer to our [preprint](https://www.biorxiv.org/content/10.1101/2023.10.10.561733) for details of DeMixSC.
 
 # Framework overview
 DeMixSC offers accurate cell-type deconvolution for large bulk RNA-seq datasets through a two-tier procedure.  
@@ -19,41 +19,34 @@ Note: DeMixSC requires a matched tissue type between the small benchmark dataset
 
 # Usage
 
-DeMixSC is implemented in R. To use DeMixSC, first download the latest version of `DeMixSC` package from this GitHub page directly. 
-
-After unzipping, the `DeMixSC-main` folder contains the required functions for preprocessing (in the R script `DeMixSC.preprocess.R`) and deconvolving (in the R script `DeMixSC.deconvolution.R`). Link these functions to your working directory as follows:
+DeMixSC is implemented in R. To use DeMixSC, please install the required packages as detailed below: 
 
 ```r
-# DeMixSC core functions
-  source("./DeMixSC-main/DeMixSC.preprocess.R")
-  source("./DeMixSC-main/DeMixSC.deconvolution.R")
+# Install BiocManager if necessary
+  if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")     
+      
+# Install required pacakges
+  BiocManager::install("sva")
+  BiocManager::install("preprocessCore")
+  install.packages("doParallel")
+  install.packages("nnls")
+  install.packages('Seurat')
 ```
 
-Next, install the required packages for running DeMixSC as follows: 
+Next, please install the latest version of DeMixSC from our GitHub repository:
 
 ```r
-# List of required packages
-  packages <- c("preprocessCore", "nnls", "doParallel", "sva", "devtools")
-  
-# Check and install the these packages.
-  install_and_load <- function(package){
-    if (!require(package, character.only = TRUE)) {
-      install.packages(package, dependencies = TRUE)
-      library(package, character.only = TRUE)
-    }
+# install devtools if necessary
+  if (!"devtools" %in% rownames(installed.packages())) {
+    install.packages('devtools')
   }
-  
-  lapply(packages, install_and_load)
 
-# Required packages
-  library("preprocessCore")
-  library("nnls")
-  library("doParallel")
-  library("sva")
-  library("devtools")
+# Install our DeMixSC package with the following command
+  devtools::install_github('wwylab/DeMixSC')
 ```
 
-You can then use the provided functions to conduct the experimental analyses. We provide a [tutorial](link) on using DeMixSC for deconvolving a sample dataset. 
+You can then use the provided functions to conduct deconvolution analyses. We provide a [tutorial](https://sphingosine.github.io/tutorial/DeMixSC.html) on using DeMixSC for deconvolving the benchmarking dataset. 
 
 
 # License

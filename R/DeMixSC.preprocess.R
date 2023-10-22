@@ -1,4 +1,4 @@
-#' @title Functions used in the pre-processing steps implemented in DeMixSC 
+#' @title Functions used in the pre-processing steps implemented in DeMixSC
 
 #' @author Shuai Guo, Xiaoqian Liu, Wenyi Wang
 
@@ -9,27 +9,27 @@
 #' @description Take the annotated Seurat object as input to build a reference matrix.
 #'
 #' @param Seurat.obj The pre-annotated single-cell Seurat object.
-#' @param annotation A scalar or a character string to designate the column for cell-type information in the Seurat object. 
+#' @param annotation A scalar or a character string to designate the column for cell-type information in the Seurat object.
 #'
 #' @return
-#' \item{reference}{A matrix of the reference expression, 
+#' \item{reference}{A matrix of the reference expression,
 #'                  with genes on the rows and cell types on the columns.}
-#' \item{\theta}{A matrix of the expression abundance relative to total UMI count per cell type, 
-#'               with genes on the rows and cell types on the columns.}
+#' \item{theta}{A matrix of the expression abundance relative to total UMI count per cell type,
+#'              with genes on the rows and cell types on the columns.}
 #' \item{cell.size}{A vector of the mean cell size for each cell type.}
-#' 
+#'
 #' @export
 
 DeMixSC.ref = function(Seurat.obj, annotation){
-  
+
   # Obtain the data from the Seurat object
   mat.norm  = Seurat.obj@assays$RNA@data
   cell.type = as.matrix(Seurat.obj@meta.data[,annotation]) ## maintain column and row names in the original matrix.
-  
+
   # Filter genes with zero expression in all columns
   nz.gene = rownames(mat.norm)[(Matrix::rowSums(mat.norm) != 0 )]
   mat.norm = mat.norm[nz.gene, , drop = FALSE]
-  
+
   # Calculate theta for each cell-type
   theta.ct = sapply(unique(cell.type), function(ct){
     x = mat.norm[,cell.type %in% ct, drop = FALSE]
@@ -45,26 +45,26 @@ DeMixSC.ref = function(Seurat.obj, annotation){
   # Construct the cell-type-specific reference matrix for each cell type
   ref.ct = t(t(theta.ct)*size.ct)
 
-  return(list(reference = ref.ct, 
-              cell.size = size.ct, 
+  return(list(reference = ref.ct,
+              cell.size = size.ct,
               theta = theta.ct))
 }
 
 #' @title Identify genes less affected by technological discrepancies
-#' 
+#'
 #' @description
 #' Using the benchmark dataset as input, this function discerns genes that remain stable across technological platforms from those that exhibit high discrepancies.
-#' 
+#'
 #' @param mat.a Expression matrix 'a' from the benchmark dataset, with genes as rows and cell types as columns (potentially the bulk matrix).
 #' @param mat.b Expression matrix 'b' from the benchmark dataset, with genes as rows and cell types as columns (potentially the pseudo-bulk matrix).
 #' @param cutoff A cutoff P-value threshold to classify genes influenced by technological discrepancies. Default is 0.05.
-#' 
+#'
 #' @return
 #'  \item{non.discrepancies.genes}{A list of genes minimally influenced by technological discrepancies.}
 #'  \item{mat.a.normalized}{Normalized expression matrix 'a' from the benchmark dataset.}
 #'  \item{mat.b.normalized}{Normalized expression matrix 'b' from the benchmark dataset.}
 #'  \item{t.test.res}{Paired t-test results table for genes detailing various parameters, with genes on the rows and parameters on the columns.}
-#' 
+#'
 #' @export
 
 DeMixSC.discrepancy = function(mat.a, mat.b, cutoff = 0.05){
@@ -79,12 +79,12 @@ DeMixSC.discrepancy = function(mat.a, mat.b, cutoff = 0.05){
   df_norm = preprocessCore::normalize.quantiles(as.matrix(cbind(mat.a[commom.genes,],mat.b[commom.genes,])))
   colnames(df_norm) = c(colnames(mat.a), colnames(mat.b))
   rownames(df_norm) = commom.genes
-  
+
   # Remove rows with zero expression across all samples
   if(sum(df_norm == 0) > 0){
     df_norm = df_norm[df_norm !=0,]
   }
-  
+
   # Perform differential expression analysis using paired t-test
   res = matrix(nrow = nrow(df_norm), ncol = 8)
   row.names(res) = row.names(df_norm)
@@ -102,7 +102,7 @@ DeMixSC.discrepancy = function(mat.a, mat.b, cutoff = 0.05){
   }
   padj= p.adjust(res[,"pval"], method = "fdr") # Adjust p-values with FDR.
   res = cbind(res, padj)
-  
+
   # Outputs
   return(list(non.discrepancy.genes = names(which(res[,"padj"] >= cutoff)),
               mat.a.normalized = df_norm[,1:n.mat.a],
@@ -118,7 +118,7 @@ DeMixSC.discrepancy = function(mat.a, mat.b, cutoff = 0.05){
 #' @param Seurat.obj The pre-annotated single-cell Seurat object.
 #' @param annotation A column name or scalar indicating cell-type information within the Seurat object.
 #' @param mat.a  mRNA expression matrix 'a' from the benchmark dataset (possibly bulk matrix), with genes on the rows and cell types on the columns.
-#' @param mat.b  mRNA expression matrix 'b' from the benchmark dataset (possibly pseudo-bulk matrix), with genes on the rows and cell types on the columns. 
+#' @param mat.b  mRNA expression matrix 'b' from the benchmark dataset (possibly pseudo-bulk matrix), with genes on the rows and cell types on the columns.
 #' @param cutoff Threshold to differentiate genes based on inter-platform discrepancies. Default is 0.05.
 #' @param scale.factor Scale factor applied to the relative expression abundances matrix. Default is 1e6.
 #'
@@ -127,7 +127,7 @@ DeMixSC.discrepancy = function(mat.a, mat.b, cutoff = 0.05){
 #'  \item{mat.b}{Relative expression matrix 'b', with genes on the rows and samples on the columns.}
 #'  \item{reference.adj}{Adjusted reference matrix used for deconvolving mat.a.adj}
 #'  \item{reference}{Original reference matrix used for deconvolving mat.b}
-#'  \item{\theta.adj}{Adjusted relative abundance matrix of reference expression.}
+#'  \item{theta.adj}{Adjusted relative abundance matrix of reference expression.}
 #'  \item{cell.size}{A vector of the mean cell size for each cell type.}
 #'  \item{discrepancy.genes}{A list of genes highly affected with technological discrepancies.}
 #'  \item{non.discrepancy.genes}{A list of genes hardly affected by technological discrepancies.}
@@ -135,24 +135,24 @@ DeMixSC.discrepancy = function(mat.a, mat.b, cutoff = 0.05){
 #' @export
 
 DeMixSC.prep.benchmark = function(Seurat.obj, annotation, mat.a, mat.b, cutoff = 0.05, scale.factor = 1e6) {
-  
+
   # Construct the reference expression matrix from Seurat object
   ref = DeMixSC.ref(Seurat.obj, annotation)
-  
+
   # Determine genes with discrepancies between matrices
   discrepancy = DeMixSC.discrepancy(mat.a, mat.b, cutoff)
   commom.genes = intersect(row.names(ref$reference), row.names(discrepancy$mat.a.normalized))
   discrepancy.genes = setdiff(commom.genes, intersect(commom.genes, discrepancy$non.discrepancy.genes))
-  
+
   # Extract relevant attributes
   cell.size = ref$cell.size
   theta     = ref$theta[commom.genes,]
   reference = ref$reference[commom.genes,]
-  
+
   # Normalize the expression matrices for relative expression abundances
   mat.a.final = apply(discrepancy$mat.a.normalized[commom.genes,], 2, function(x){ x/sum(x)*(scale.factor) })
   mat.b.final = apply(discrepancy$mat.b.normalized[commom.genes,], 2, function(x){ x/sum(x)*(scale.factor) })
-  
+
   # Adjust expression values of genes influenced by technological discrepancies
   for (i in discrepancy.genes) {
     log2_basemean = log2(discrepancy$t.test.res[i,"baseMean"])
@@ -160,7 +160,7 @@ DeMixSC.prep.benchmark = function(Seurat.obj, annotation, mat.a, mat.b, cutoff =
     reference[i,] = reference[i,]/log2_basemean
     theta[i,] = theta[i,]/log2_basemean
   }
-  
+
   # Return the processed and adjusted matrices, references, and additional attributes
   return(list(mat.a.adj = mat.a.final,
               mat.b = mat.b.final,
@@ -173,31 +173,31 @@ DeMixSC.prep.benchmark = function(Seurat.obj, annotation, mat.a, mat.b, cutoff =
 }
 
 #' @title Preprocess a benchmark dataset for deconvolution of unmatched bulk cohort using DeMixSC
-#' 
+#'
 #' @description
 #' Adjusts and prepares the target bulk matrix and a reference matrix for deconvolution.
-#'            
+#'
 #' @param Seurat.obj The pre-annotated single-cell Seurat object.
 #' @param annotation A column name or scalar indicating cell-type information within the Seurat object.
-#' @param mat.a  mRNA expression matrix 'a' from the benchmark dataset (possibly bulk matrix), with genes on the rows and cell types on the columns.
-#' @param mat.b  mRNA expression matrix 'b' from the benchmark dataset (possibly pseudo-bulk matrix), with genes on the rows and cell types on the columns. 
+#' @param mat.a mRNA expression matrix 'a' from the benchmark dataset (possibly bulk matrix), with genes on the rows and cell types on the columns.
+#' @param mat.b mRNA expression matrix 'b' from the benchmark dataset (possibly pseudo-bulk matrix), with genes on the rows and cell types on the columns.
 #' @param mat.target Targeted bulk cohort matrix for deconvolution, with genes on the rows and cell types on the columns.
 #' @param cutoff Threshold to differentiate genes based on inter-platform discrepancies. Default is 0.05.
 #' @param scale.factor Scale factor applied to the relative expression abundances matrix. Default is 1e6.
 #' @param combat Logical indicator for using ComBat to align the unmatched bulk cohort with the benchmark dataset's bulk data. Default is TRUE.
-#' 
+#'
 #' @return
 #'  \item{mat.target.adj}{Adjusted target bulk cohort's relative expression matrix.}
 #'  \item{reference.adj}{Adjusted reference matrix suitable for deconvolution}
-#'  \item{\theta.adj}{Adjusted relative abundance matrix of reference expression.}
+#'  \item{theta.adj}{Adjusted relative abundance matrix of reference expression.}
 #'  \item{cell.size}{A vector of the mean cell size for each cell type.}
 #'  \item{discrepancy.genes}{A list of genes highly affected with technological discrepancies.}
 #'  \item{non.discrepancy.genes}{A list of genes hardly affected by technological discrepancies.}
-#'  
+#'
 #' @export
 
 DeMixSC.prep = function(Seurat.obj, annotation,
-                        mat.a, mat.b, mat.target, 
+                        mat.a, mat.b, mat.target,
                         cutoff = 0.05, scale.factor = 1e6, combat = TRUE) {
 
   # Remove zero genes across matrices
@@ -210,13 +210,13 @@ DeMixSC.prep = function(Seurat.obj, annotation,
   if (sum(rowSums(mat.b) == 0) != 0) {
     mat.b = mat.b[rowSums(mat.b == 0) != ncol(mat.b),]
   }
-  
+
   # Match genes across matrices
   bulk.genes = Reduce(intersect, list(row.names(mat.a), row.names(mat.b), row.names(mat.target)))
   mat.target = mat.target[bulk.genes,]
   mat.a = mat.a[bulk.genes,]
   mat.b = mat.b[bulk.genes,]
-  
+
   # Normalize matrices and align the bulk RNA-seq data
   ncol.mat.target = ncol(mat.target) # number of samples in the targeted bulk to be deconvolved
   ncol.mat.a = ncol(mat.a) # number of samples in the bulk data from benchmark dataset
@@ -226,11 +226,11 @@ DeMixSC.prep = function(Seurat.obj, annotation,
   } else {
     mat.align = bulk.input
   }
-  
+
   mat.align.norm = preprocessCore::normalize.quantiles(as.matrix(cbind(mat.align, mat.b)))
   rownames(mat.align.norm) = bulk.genes
   colnames(mat.align.norm) = colnames(cbind(mat.target, mat.a, mat.b))
-  
+
   mat.target.align = mat.align.norm[,1:ncol.mat.target]
   mat.a.align = mat.align.norm[,(ncol.mat.target+1): (ncol.mat.target + ncol.mat.a) ]
   mat.b.align = mat.align.norm[,(ncol.mat.target + ncol.mat.a + 1):ncol(mat.align.norm)]
@@ -241,7 +241,7 @@ DeMixSC.prep = function(Seurat.obj, annotation,
   # Prepare the final input matrix
   ref = DeMixSC.ref(Seurat.obj, annotation)
   mat.target.align.final = apply(mat.target.align, 2, function(x){ x/sum(x)*(scale.factor) })
-  
+
   commom.genes = intersect(row.names(ref$reference), row.names(discrepancy$mat.a.normalized))
   cell.size = ref$cell.size
   theta     = ref$theta[commom.genes,]

@@ -1,0 +1,18 @@
+Package: DeMixSC
+Type: Package
+Title: DeMixSC for bulk RNA-seq deconvolution
+Version: 0.1.0
+Authors@R: c(person("Shuai", "Guo", role = c('aut', 'cre'), email = 'SGuo3@mdanderson.org'),
+             person("Xiaoqian", "Liu", role = c('aut'), email = 'XLiu31@mdanderson.org'),
+             person("Wenyi", "Wang", role = c('aut'), email = 'WWang7@mdanderson.org'))
+Maintainer: Shuai Guo <sguo3@mdanderson.org>
+Description: DeMixSC is a generalizable framework designed to leverage single-cell sequencing and a small benchmark dataset for bulk RNA-seq deconvolution.
+License: This package is licensed under GNU Affero General Public License v3.0. See the LICENSE file for details.
+Encoding: UTF-8
+LazyData: true
+Depends: R (>= 4.2.1), nnls (>= 1.4), preprocessCore, doParallel, sva
+Imports: 
+        Seurat
+URL: https://github.com/wwylab/DeMixSC
+BugReports: https://github.com/wwylab/DeMixSC/issues
+RoxygenNote: 7.2.3
