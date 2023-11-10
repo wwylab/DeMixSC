@@ -53,7 +53,7 @@ You can then use the provided functions to conduct deconvolution analyses. We pr
 This package is licensed under GNU Affero General Public License v3.0. See the LICENSE file for details. 
 
 # Contact
-For questions or comments about DeMixSC, please contact the package maintainers at Shuai Guo <SGuo3@mdanderson.org> and Xiaoqian Liu <XLiu31@mdanderson.org>. If you find a bug or have a feature request, please submit an issue on the GitHub repository.
+For questions or comments about DeMixSC, please contact Shuai Guo <SGuo3@mdanderson.org>, Xiaoqian Liu <XLiu31@mdanderson.org> and Wenyi Wang <wwang7@mdanderson.org>. If you find a bug or have a feature request, please submit an issue on the GitHub repository.
 
 
 
