@@ -46,7 +46,7 @@ Next, please install the latest version of DeMixSC from our GitHub repository:
   devtools::install_github('wwylab/DeMixSC')
 ```
 
-You can then use the provided functions to conduct deconvolution analyses. We provide a [tutorial](https://sphingosine.github.io/tutorial/DeMixSC.html) on using DeMixSC for deconvolving the benchmarking dataset. 
+You can then use the provided functions to conduct deconvolution analyses. We provide a [tutorial](https://wwylab.github.io/DeMixSC/) on using DeMixSC for deconvolving the benchmarking dataset. 
 
 
 # License
