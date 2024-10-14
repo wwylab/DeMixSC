@@ -1,0 +1,574 @@
+---
+title: "DeMixSC for bulk transcriptomics cell-type deconvolution"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+## Overview
+
+DeMixSC is a single-cell based deconvolution framework. It provides improved cell-type ratio estimates in complex bulk tissue samples by utilizing a small single-cell benchmark dataset.
+
+This tutorial guides users step-by-step through each deconvolution option provided by DeMixSC:
+
+- **option = "retina"**:  Deconvolve bulk retina samples using the prebuilt retina benchmark dataset. In this tutorial, we demonstrate the process using bulk retina samples from the [Ratnapriya et al. AMD retina cohort](https://www.nature.com/articles/s41588-019-0351-9).
+
+- **option = "hgsc"**: Deconvolve bulk high-grade serous ovarian carcinoma (HGSC) samples using the pre benchmark dataset from [Hippen et al. 2023](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-023-03077-7) study. We use HGSC samples from the [Lee et al. HGSC cohort](https://www.cell.com/cell-reports/fulltext/S2211-1247(20)30392-2) as an example.
+
+- **option = "user.defined"**: For this option, users can either (a) provide their own benchmark dataset for running DeMixSC benchmark mode, or (b) provide both a target bulk sample and a benchmark dataset to deconvolve the target data. In this tutorial, AMD retina deconvolution serves as an example to illustrate how to apply this general setting.
+
+Each example section is organized as follows:
+(1) **Read data**: Load the required data based on the selected option.
+(2) **Run deconvolution**: Perform deconvolution analysis using DeMixSC.
+(3) **Visualize results**: Generate visualizations to interpret the deconvolution outputs.
+
+By following this tutorial, users will gain a comprehensive understanding of DeMixSC’s functionalities and be equipped to perform deconvolution across different datasets and conditions.
+
+## Preparation
+
+To run DeMixSC, please make sure your R version is $\geq$ 4.2.1 and install the following R packages with the required version:
+
+- nnls $\geq$ 1.4
+- preprocessCore $\geq$ 1.52.1
+- doParallel $\geq$ 1.0.17
+- pbapply $\geq$ 1.7-2
+- sva $\geq$ 3.38.0
+
+```{r eval=FALSE}
+# Check and install required packages
+# You may receive additional messages if it is the first time for you to install the packages.
+
+# Install BiocManager if necessary
+  if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")    
+      
+# Install required packages
+  BiocManager::install("sva")
+  BiocManager::install("preprocessCore")
+  install.packages("doParallel")
+  install.packages("pbapply")
+  install.packages("nnls")
+```
+
+Install the latest version of DeMixSC from our GitHub repository:
+
+```{r eval=FALSE}
+# install devtools if necessary
+  if (!"devtools" %in% rownames(installed.packages())) {
+    install.packages('devtools')
+  }
+
+# Install our DeMixSC package with the following command
+  devtools::install_github('wwylab/DeMixSC')
+```
+
+Load the required libraries for this tutorial:
+
+```{r warning=FALSE, message=FALSE}
+# Load necessary libraries for DeMixSC deconvolution framework
+  library(DeMixSC)
+  library(preprocessCore)
+  library(nnls)
+  library(doParallel)
+  library(pbapply)
+
+# Load libraries for result visualization and evaluation
+  library(RColorBrewer)     # For generating color schemes in plots
+  library(ggplot2)          # For creating visualizations of deconvolution results
+  library(dplyr)            # For data manipulation and summarization
+  library(Metrics)          # For calculating performance metrics (e.g., RMSE)
+```
+
+## Checking the prebuilt data in DeMixSC:
+
+The DeMixSC package provides two prebuilt datasets: `Retina` and `HGSC`, which include all necessary components for running this tutorial. 
+
+Each dataset consists of a small benchmark dataset, a prebuilt consensus reference matrix, and an unmatched large cohort. 
+
+```{r eval = FALSE}
+# List all available data
+# To have an overview of all the prebuilt datasets available in DeMixSC, 
+# users can use the following command:
+  data(package = "DeMixSC")
+
+# View dataset details
+# To explore the content and format of a specific dataset, 
+# users can use ? followed by the dataset name:
+  ?retina_amd_cohort_raw_counts
+```
+
+By reviewing the available datasets and their accompanying documentation, users can familiarize themselves with the data structure and prepare to use it for deconvolution in DeMixSC.
+
+## Example-1: Deconvolve the Ratnapriya et al., AMD retina cohort with DeMixSC (`option = "retina"`)
+
+In this section, we demonstrate how to deconvolve the `Ratnapriya et al., AMD retina cohort` using the prebuilt `retina benchmark dataset` and `consensus references` with DeMixSC. 
+
+The performance of the deconvolution is evaluated by comparing the estimated cell-type proportions of non-AMD (healthy, n=105) samples with experimental measures (Liang et al., 2019).
+
+```{r warning=FALSE, message=FALSE}
+# Load the raw count data and the clinical informatin for the AMD retina cohort
+  amd_cohort_raw_counts = get("retina_amd_cohort_raw_counts", envir = asNamespace("DeMixSC"))
+  amd_cohort_clinical_info = get("retina_amd_cohort_clinical_info", envir = asNamespace("DeMixSC"))
+```
+
+- Components of the Ratnapriya et al., AMD retina dataset:
+  - `amd_cohort_raw_counts`: A raw count matrix. Rows represent genes (12,606 in total), and columns represent samples (453 samples).
+  - `amd_cohort_clinical_info`: Clinical metadata for the AMD cohort, including `sample_id`, `age`, and `mgs_level` (severity of macular degeneration, based on the Macular Grading Scale).
+
+```{r warning=FALSE}
+# Run DeMixSC deconvolution for the AMD cohort
+  Est.prop.weighted = DeMixSC(option = "retina",
+                              benchmark.mode = FALSE, 
+                              mat.target = amd_cohort_raw_counts, 
+                              min.expression = 3, 
+                              scale.factor = 1e5,
+                              adjp.cutoff = 0.05, 
+                              log2fc.cutoff = 0.75, 
+                              top.ranked.genes = 1500, 
+                              c = 2,
+                              adj.factor = 1000,
+                              iter.max = 2000, 
+                              eps = 0.001,
+                              nthread = (detectCores()[1] - 1),
+                              print.sample = 1, 
+                              output.file = "./DeMixSC.save.iter.txt")
+```
+
+- Note: We recommend that users test different numbers of selected top-ranked genes (e.g., adjusting `top.ranked.genes`) to evaluate the performance of DeMixSC for their specific dataset, and select the most desirable number of genes for accurate cell-type proportion estimation.
+
+- Note: The `output.file` (e.g., `"./DeMixSC.save.iter.txt"`) saves the iteration details for the deconvolution process of the specified sample (e.g., the first sample, as indicated by `print.sample = 1`). This file logs how the algorithm converges for that sample. Users can set `print.sample = NULL` to disable saving iteration details. 
+
+- The results returned by the `DeMixSC` function (`Est.prop.weighted`) when `mat.target` is provided:
+  - `proportion`: A matrix of estimated cell-type proportions for the provided bulk cohort (`mat.target`), with rows are cell types and columns are samples.
+  - `converge`: A vector indicating the number of iterations for the deconvolution algorithm to converge for each sample in the bulk cohort.
+  
+```{r warning=FALSE, message=FALSE, fig.height=4, fig.width= 11}
+# Visualize deconvolution results (Non-AMD vs AMD)
+
+# Cell types to visualize and color scheme
+  cell.order = c("AC", "BC", "Cone", "HC", "MG", "RGC", "Rod", "Astrocyte", "Microglia", "RPE")
+  cls = rev(brewer.pal(n = 8, name = "RdYlBu"))[c(2,6:8)][c(1,4)]
+  
+# Select the non-AMD (mgs_level = 1) and AMD samples (mgs_level = 4) 
+  samples = amd_cohort_clinical_info$sample_id[which(amd_cohort_clinical_info$mgs_level == 1 | amd_cohort_clinical_info$mgs_level == 4)]
+  amd_cohort_clinical_info = amd_cohort_clinical_info[samples,]
+  Est.prop = Est.prop.weighted$cell.type.proportions[,samples]
+  
+# Prepare proportion table
+  data.fl = data.frame(AC = (round(Est.prop, 4))["AC",amd_cohort_clinical_info$sample_id],
+                       BC = (round(Est.prop, 4))["BC",amd_cohort_clinical_info$sample_id],
+                       Cone = (round(Est.prop, 4))["Cone",amd_cohort_clinical_info$sample_id],
+                       HC = (round(Est.prop, 4))["HC",amd_cohort_clinical_info$sample_id],
+                       MG = (round(Est.prop, 4))["MG",amd_cohort_clinical_info$sample_id],
+                       RGC = (round(Est.prop, 4))["RGC",amd_cohort_clinical_info$sample_id],
+                       Rod = (round(Est.prop, 4))["Rod",amd_cohort_clinical_info$sample_id],
+                       Astrocyte = (round(Est.prop, 4))["Astrocyte",amd_cohort_clinical_info$sample_id],
+                       Microglia = (round(Est.prop, 4))["Microglia",amd_cohort_clinical_info$sample_id],
+                       RPE = (round(Est.prop, 4))["RPE",amd_cohort_clinical_info$sample_id],
+                       mgs = as.factor(amd_cohort_clinical_info$mgs_level))
+  
+# Prepare data for box plot
+  prop = NULL
+  cell = NULL
+  for (i in 1:10) {
+    prop = c(prop, data.fl[,i])
+    cell = c(cell, rep(colnames(data.fl)[i], 166))
+  }
+  data = data.frame(prop = prop,
+                    mgs = rep(data.fl[,11], 10),
+                    cell = factor(cell, levels =
+                           c("AC", "BC", "Cone", "HC", "MG", 
+                             "RGC", "Rod", "Astrocyte", "Microglia", "RPE")))
+  
+# Boxplot visualize the estimated cell-type proportion between healthy and AMD conditions
+  amd.cohort.proportion =
+    data %>%
+      ggplot(aes(x = cell, y = prop, color = mgs))+theme_classic() +
+      geom_boxplot(aes(color=mgs), alpha = 0.7, position=position_dodge(0.8), outlier.shape = NA)+
+      geom_point(position = position_jitterdodge(), size = 0.5)+
+      geom_vline(xintercept = seq(1.5, 11.5, 1), col="black", lty=3) +
+      scale_color_manual(values=cls) +
+      scale_fill_manual(values=cls) +
+      theme(title=element_text(size=6), axis.text.x=element_text(size=10, angle=45, hjust=1),
+            axis.title.x=element_text(size=0), axis.text.y=element_text(size=12),
+            axis.title.y=element_text(size=12, face="bold"), legend.position = "right",
+            legend.text=element_text(size=6), legend.title=element_text(size=6)) + ylim(0, 0.8)
+  
+  print(amd.cohort.proportion)
+```
+
+```{r warning=FALSE, message=FALSE}
+# Compare DeMixSC estimates with experimental measures
+
+# The experimentally measure mean proportions of healthy aged peripheral retina tissues (Liang et al., 2019)
+# AC: 7.74%; BC: 15.6%; Cone: 4.61%; HC: 3.61%; MG: 14.08%; RGC: 1.07%; Rod: 53.29%.
+  expr_prop = c(7.74,15.6,4.61,3.61,14.08,1.07,53.29)/100
+
+# Obtain the estimated proportion from DeMixSC
+  demixsc_prop = NULL
+  for (i in 1:10) {
+    demixsc_prop = c(demixsc_prop, round(mean(data.fl[which(data.fl$mgs == 1),i]), 4))
+  }
+  names(demixsc_prop) = colnames(data.fl)[1:10]
+  demixsc_prop[1:7] = demixsc_prop[1:7]/sum(demixsc_prop[1:7])
+  
+# Calculate RMSE and Spearman correlation
+  print(paste0("The RMSE value is: ", 
+               round(rmse(demixsc_prop[1:7], expr_prop),2)))
+  
+  print(paste0("The Spearman cor. is: ", 
+               round(cor(demixsc_prop[1:7], expr_prop, method = "spearman"),2)))
+```
+
+## Example-2: Deconvolve the Lee et al., HGSC cohort with DeMixSC (`option = "hgsc"`)
+
+In this section, we demonstrate how to deconvolve the `Lee et al., HGSC cohort` using the prebuilt `HGSC benchmark dataset` and `consensus references` with DeMixSC. 
+
+The performance of the deconvolution is validated by comparing the estimated macrophage proportions to the experimental staining results.
+
+```{r warning=FALSE, message=FALSE}
+# Load the raw count data for the HGSC cohort
+  lee_cohort_raw_counts = get("hgsc_lee_cohort_raw_counts", envir = asNamespace("DeMixSC"))
+  lee_cohort_clinical_info = get("hgsc_lee_cohort_clinical_info", envir = asNamespace("DeMixSC"))
+  lee_cohort_mc_staining = get("hgsc_lee_cohort_mc_staining", envir = asNamespace("DeMixSC"))
+```
+
+- Components of the Lee et al., HGSC dataset:
+  - `lee_cohort_raw_counts`: A raw count matrix of gene expression data for the Lee et al. HGSC cohort. This dataset contains 41 bulk RNA-seq samples from 30 patients.
+  - `lee_cohort_clinical_info`: Includes sample IDs (`external_id`, `sequencing_id`, `clinical_sample_id`) and response to neoadjuvant chemotherapy (`response`).
+  - `lee_cohort_mc_staining`: Includes sample ID (`external_id`), quantitative measure of macrophage staining results (`Macrophages`), and response to neoadjuvant chemotherapy (`response`).
+
+```{r warning=FALSE}
+# Run DeMixSC deconvolution for the HGSC cohort
+  Est.prop.weighted = DeMixSC(option = "hgsc",
+                              benchmark.mode = FALSE,
+                              mat.target = lee_cohort_raw_counts, 
+                              min.expression = 5, 
+                              scale.factor = 1e6,
+                              adjp.cutoff = 0.05, 
+                              log2fc.cutoff = 0.75, 
+                              top.ranked.genes = 7000, 
+                              adj.factor = 2000,
+                              c = 2, 
+                              iter.max = 2000, 
+                              eps = 0.001, 
+                              nthread = (detectCores()[1] - 1),
+                              print.sample = 1, 
+                              output.file = "./DeMixSC.save.iter.txt")
+```
+
+```{r warning=FALSE, message=FALSE, fig.height=4, fig.width=11}
+# Visualize the deconvolution results (E0 vs ER vs PR)
+
+# Plot the estimated cell-type proportions
+  Est.prop = Est.prop.weighted$cell.type.proportions
+  data.fl = data.frame(B.cells = (round(Est.prop, 4))["B.cells",],
+                       Plasma.cells = (round(Est.prop, 4))["Plasma.cells",],
+                       T.cells = (round(Est.prop, 4))["T.cells",],
+                       NK.cells = (round(Est.prop, 4))["NK.cells",],
+                       ILC = (round(Est.prop, 4))["ILC",],
+                       Monocytes = (round(Est.prop, 4))["Monocytes",],
+                       DC = (round(Est.prop, 4))["DC",],
+                       pDC = (round(Est.prop, 4))["pDC",],
+                       Macrophages = (round(Est.prop, 4))["Macrophages",],
+                       Mast.cells = (round(Est.prop, 4))["Mast.cells",],
+                       Endothelial.cells = (round(Est.prop, 4))["Endothelial.cells",],
+                       Fibroblasts = (round(Est.prop, 4))["Fibroblasts",],
+                       Epithelial.cells = (round(Est.prop, 4))["Epithelial.cells",],
+                       rps = factor(lee_cohort_clinical_info$response, levels = c("R0", "ER", "PR")),
+                       patient = lee_cohort_clinical_info$clinical_sample_id,
+                       seqid = lee_cohort_clinical_info$external_id)
+
+# Clean up the final proportion table by merging replicates  
+  data.fl$seqid <- gsub("-?R$", "", data.fl$seqid)
+  result <- data.fl %>%
+    group_by(seqid) %>%
+    summarise(across(where(is.numeric), mean, na.rm = TRUE),  
+              across(where(is.character), ~first(.)))        
+  lee_cohort_clinical_info$seqid = gsub("-?R$", "", lee_cohort_clinical_info$external_id)
+  result = data.frame(result)
+  row.names(result) = result$seqid
+
+# Prepare data for box plot    
+  rps = NULL
+  patient = NULL
+  for (i in row.names(result)) {
+    id = which(lee_cohort_clinical_info$seqid == i)[1]
+    rps = c(rps, lee_cohort_clinical_info$response[id])
+    patient = c(patient, lee_cohort_clinical_info$clinical_sample_id[id])
+  }
+  result$rps = factor(rps, levels = c("R0", "ER", "PR"))
+  result$patient=patient
+  cls = rev(brewer.pal(n = 8, name = "RdYlBu"))[c(2,6:8)][c(1,2,4)]
+  prop = NULL
+  cell = NULL
+  for (i in 2:14) {
+    prop = c(prop, result[,i])
+    cell = c(cell, rep(colnames(result)[i], length(result$seqid) ))
+  }
+  data = data.frame(prop = prop,
+                    rps  = rep(result$rps, 13),
+                    cell = factor(cell, 
+                                  levels = c("Epithelial.cells",
+                                             "Endothelial.cells", "Fibroblasts",
+                                             "B.cells", "Plasma.cells", "T.cells",
+                                             "NK.cells", "ILC",
+                                             "Monocytes", "Macrophages",
+                                             "Mast.cells","DC", "pDC" )) )
+  
+# Boxplot visualize the estimated cell-type proportion across different response groups
+  hgsc.cohort.proportion = 
+    data %>%
+      ggplot(aes(x = cell, y = prop, color = rps))+theme_classic() +
+      geom_boxplot(aes(color=rps), alpha = 0.7, position=position_dodge(0.8),outlier.shape = NA)+
+      geom_point(position = position_jitterdodge(), size = 0.5)+
+      geom_vline(xintercept = seq(1.5, 12.5, 1), col="black", lty=3) +
+      scale_color_manual(values=cls) +
+      scale_fill_manual(values=cls) +
+      theme(title=element_text(size=6), axis.text.x=element_text(size=10, angle=45, hjust=1),
+            axis.title.x=element_text(size=0), axis.text.y=element_text(size=12),
+            axis.title.y=element_text(size=12, face="bold"), legend.position = "right",
+            legend.text=element_text(size=6), legend.title=element_text(size=6))
+  
+  print(hgsc.cohort.proportion)
+```
+
+```{r warning=FALSE, message=FALSE, fig.height=4, fig.width=5}
+# Compare DeMixSC estimates with experimental measures
+
+# Subset the 21 samples with matched staining data for macrophages
+  result_staining = result[lee_cohort_mc_staining$external_id,]
+
+# Prepare input data for scatter plot visualization
+  df.scatter = data.frame(
+    staining = lee_cohort_mc_staining$Macrophages,
+    demixsc = result_staining$Macrophages,
+    group = result_staining$rps
+  )
+
+# Scatter plot comparing staining data with DeMixSC estimates
+  hgsc.macrophage.comparison = 
+  ggplot(df.scatter, aes(x = staining, y = demixsc, color = group)) +
+    geom_point(size = 1.5) +
+    # Add spearman correlation
+    labs(title = paste0("Spearman cor: ", round(cor(df.scatter$staining, 
+                                                    df.scatter$demixsc, 
+                                                    method = "spearman"), 2)
+                        ),
+         x = "Opal multiplex staining of Macropahges (CD68/CD163))",
+         y = "DeMixSC deconovlution estimates",
+         color = "Response group") + 
+    xlim(-0.01, 0.2) +
+    ylim(-0.01, 0.2) +
+    geom_smooth(method = "lm", se = FALSE, linetype = "solid", color = "grey") +
+    geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "black") +
+    scale_color_manual(values = c("R0" = "#74ADD1", "ER" = "#FDAE61", "PR" = "#D73027")) +
+    theme_classic()
+  
+  print(hgsc.macrophage.comparison)
+```
+
+## Example-3: Deconvolve the retina and HGSC benchmark data with DeMixSC (`option = "user.defined"`)
+
+In this section, we demonstrate how to apply DeMixSC using user-provided `benchmark data`. 
+
+This example tests the performance of DeMixSC with newly generated benchmark datasets.
+
+We use the `retina benchmark dataset batch-1` as an example and evaluate the deconvolution performance using the root mean squared error (RMSE) compared to ground truth proportions. 
+
+```{r warning=FALSE, message=FALSE}
+# Load benchmark and reference data (retina benchmark dataset batch-1)
+  benchmark_bulk       = get("retina_benchmark_bulk_batch1", envir = asNamespace("DeMixSC"))
+  benchmark_pseudobulk = get("retina_benchmark_pseudobulk_batch1", envir = asNamespace("DeMixSC"))
+  benchmark_ref        = get("retina_benchmark_reference_batch1", envir = asNamespace("DeMixSC"))
+```
+
+- Note: users can easily test the performance of DeMixSC on `retina benchmark dataset batch-2` by loading the following data:
+
+```{r eval=FALSE}
+# Load benchmark and reference data (retina benchmark dataset batch-2)
+  benchmark_bulk       = get("retina_benchmark_bulk_batch2", envir = asNamespace("DeMixSC"))
+  benchmark_pseudobulk = get("retina_benchmark_pseudobulk_batch2", envir = asNamespace("DeMixSC"))
+  benchmark_ref        = get("retina_benchmark_reference_batch2", envir = asNamespace("DeMixSC"))
+```
+
+```{r warning=FALSE, message=FALSE}
+# Run DeMixSC deconvolution on the retina benchmark data
+  results = DeMixSC(option = "user.defined",
+                    benchmark.mode = TRUE,
+                    reference = benchmark_ref$reference,
+                    mat.a = benchmark_bulk, 
+                    mat.b = benchmark_pseudobulk,
+                    min.expression = 5, 
+                    scale.factor = 1e5, 
+                    adjp.cutoff = 0.05, 
+                    log2fc.cutoff = 1, 
+                    top.ranked.genes = 5000, 
+                    adj.factor = 1000,
+                    c = 2, 
+                    iter.max = 2000, 
+                    eps = 0.001, 
+                    nthread = (detectCores()[1] - 1),
+                    print.sample = 1, 
+                    output.file = "./DeMixSC.save.iter.txt")
+```
+
+- DeMixSC deconvolution outputs when `mat.target` is `NULL`:
+  - `prop.est_bulk`: A matrix of estimated cell-type proportions for the bulk benchmark data (`mat.a`), where rows are cell types and columns are samples.
+  - `prop.est_pseudobulk`: A matrix of estimated cell-type proportions for the pseudo-bulk benchmark data (`mat.b`), where rows are cell types and columns are samples.
+
+```{r warning=FALSE, message=FALSE}
+# Save the estimated cell-type proportions of the bulk and pseudo-bulk data
+  prop.est_bulk = results$bulk.prop
+  prop.est_pseudobulk = results$pseudobulk.prop
+```
+
+We use the root mean squared error (RMSE) to evaluate DeMixSC's performance in deconvolving benchmark data.
+
+```{r warning=FALSE, message=FALSE}
+# Load the ground truth
+  retina_truth_proportion = get("retina_benchmark_ground_truth", envir = asNamespace("DeMixSC"))
+  
+  cell.order = c("AC","BC","Cone","HC","MG","RGC","Rod")
+```
+
+```{r warning=FALSE, message=FALSE}
+# The RMSE values in the bulk data (one for each sample)
+  print("The RMSE values for the real-bulk samples")
+  for (i in colnames(prop.est_bulk)) {
+    print(rmse(retina_truth_proportion[cell.order,i], prop.est_bulk[cell.order,i]))
+  }
+```
+
+```{r warning=FALSE, message=FALSE}
+# The RMSE values in the pseudo-bulk data (one for each sample)
+  print("The RMSE values for the pseudo-bulk samples")
+  for (i in colnames(prop.est_pseudobulk)) {
+    print(rmse(retina_truth_proportion[cell.order,i], prop.est_pseudobulk[cell.order,i]))
+  }
+```
+
+Additionally, we illustrate how to extend the analysis to other datasets, such as the `HGSC benchmark dataset`.
+
+```{r eval=FALSE}
+# Laod the HGSC benchmark dataset
+  benchmark_bulk        = get("hgsc_benchmark_bulk", envir = asNamespace("DeMixSC"))
+  benchmark_pseudobulk  = get("hgsc_benchmark_pseudobulk", envir = asNamespace("DeMixSC"))
+  benchmark_ref         = get("hgsc_benchmark_reference", envir = asNamespace("DeMixSC"))
+  hgsc_truth_proportion = get("hgsc_benchmark_ground_truth", envir = asNamespace("DeMixSC"))
+  
+# Run DeMixSC deconvolution on the HGSC benchmark data
+  results = DeMixSC(option = "user.defined",
+                    benchmark.mode = TRUE,
+                    reference = benchmark_ref$reference,
+                    mat.a = benchmark_bulk, 
+                    mat.b = benchmark_pseudobulk,
+                    min.expression = 5, 
+                    scale.factor = 1e5, 
+                    adjp.cutoff = 0.05, 
+                    log2fc.cutoff = 1, 
+                    top.ranked.genes = 2000, 
+                    adj.factor = 1000,
+                    c = 2,
+                    iter.max = 2000, 
+                    eps = 0.001, 
+                    nthread = (detectCores()[1] - 1),
+                    print.sample = 5, 
+                    output.file = "./DeMixSC.save.iter.txt") 
+  
+# Save the estimated cell-type proportions of the bulk and pseudo-bulk data
+  prop.est_bulk = results$bulk.prop
+  prop.est_pseudobulk = results$pseudobulk.prop
+  
+# load the ground truth.
+  cell.order = c("Epithelial cells","Endothelial cells","Fibroblasts",
+                 "B cells","Plasma cells","T cells","ILC","NK cells",
+                 "Monocytes","DC","pDC","Macrophages","Mast cells")
+                     
+# The RMSE values in the bulk data (one for each sample)
+  print("The RMSE values for the real-bulk samples")
+  for (i in colnames(prop.est_bulk)) {
+    print(rmse(hgsc_truth_proportion[cell.order,i], prop.est_bulk[cell.order,i]))
+  }
+
+# The RMSE values in the pseudo-bulk data (one for each sample)
+  print("The RMSE values for the pseudo-bulk samples")
+  for (i in colnames(prop.est_pseudobulk)) {
+    print(rmse(hgsc_truth_proportion[cell.order,i], prop.est_pseudobulk[cell.order,i]))
+  }
+```
+
+## Example-4: Deconvolve a target bulk cohort with a user-provded benchmark data with DeMixSC (`option = "user.defined"`)
+
+In this section, we use the AMD retina cohort as an example to demonstrate how to deconvolve a target bulk RNA-seq cohort with user-provided benchmark data using DeMixSC.
+
+Users need to prepare their own `reference` and `benchmark dataset` to apply DeMixSC for estimating cell-type proportions in their target bulk RNA-seq dataset.
+
+**Generating a custom reference matrix with DeMixSC (Optional)**: DeMixSC requires a reference matrix with genes as rows and cell types as columns. Users are free to generate their own cell-type-specific reference matrix using any approach they prefer. Please refer to our provided examples for the correct format. For convenience, we provide the function `DeMixSC.ref`, which allows users to easily construct a reference matrix from the single-cell Seurat object. Below is an example of how to use `DeMixSC.ref`:
+
+```{r eval = FALSE}
+# Build cell-type-specific reference from Seurat object
+  ref = DeMixSC.ref(Seurat.obj = Seurat.obj, annotation = annotation)
+  reference = ref$reference
+```
+
+- Inputs:
+  - `Seurat.obj`: The pre-annotated single-cell Seurat object.
+  - `annotation`: A scalar or a character string to designate the column for cell-type information in the Seurat object.
+
+- Outputs:
+  - `reference`: A matrix of the reference expression, with genes on the rows and cell types on the columns.
+  - `theta`: A matrix of the expression abundance relative to total UMI count per cell type, with genes on the rows and cell types on the columns.
+  - `cell.size`: A vector of the mean cell size for each cell type.
+  
+- Note: Users can apply `DeMixSC.ref` to multiple Seurat objects to calculate the mean `theta` and `cell.size` to build the consensus reference.
+
+```{r eval = FALSE}
+# Load benchmark, reference data and target bulk cohort
+  amd_cohort_raw_counts = get("retina_amd_cohort_raw_counts", envir = asNamespace("DeMixSC"))
+  reference             = get("retina_consensus_reference", envir = asNamespace("DeMixSC"))
+  benchmark_bulk        = get("retina_benchmark_bulk_batch2", envir = asNamespace("DeMixSC"))
+  benchmark_pseudobulk  = get("retina_benchmark_pseudobulk_batch2", envir = asNamespace("DeMixSC"))
+```
+
+```{r eval = FALSE}
+# Run DeMixSC deconvolution on the AMD retina cohort with retina benchmark data  
+  Est.prop.weighted = DeMixSC(option = "user.defined",
+                              benchmark.mode = FALSE,
+                              reference = reference,
+                              mat.a = benchmark_bulk, 
+                              mat.b = benchmark_pseudobulk,
+                              mat.target = amd_cohort_raw_counts, 
+                              min.expression = 3, 
+                              scale.factor = 1e5,
+                              adjp.cutoff = 0.05, 
+                              log2fc.cutoff = 0.75, 
+                              top.ranked.genes = 1500, 
+                              adj.factor = 1000,
+                              c = 2,
+                              iter.max = 2000, 
+                              eps = 0.001, 
+                              nthread = (parallel::detectCores()[1] - 1),
+                              print.sample = 1, 
+                              output.file = "./DeMixSC.save.iter.txt")
+  
+# User can use previous data visualization code of AMD cohort to check the deconvolution results
+```
+
+## License
+GNU Affero General Public License v3.0
+
+## Connect With Us
+Please contact Shuai Guo (SGuo3@mdanderson.org), Xiaoqian Liu (xiaoqian.liu@ucr.edu), Ruonan Li (RLi10@mdanderson.org), and Wenyi Wang (WWang7@mdanderson.org) if you encounter any issues when processing this tutorial.
+
+## Reference
+*Guo, S., Liu, X., Cheng, X., Jiang, Y., Ji, S., Liang, Q., ... & Wang, W. (2023). The DeMixSC deconvolution framework uses single-cell sequencing plus a small benchmark dataset for improved analysis of cell-type ratios in complex tissue samples. bioRxiv, 2023-10.*<br />
+[https://doi.org/10.1101/2023.10.10.561733](https://doi.org/10.1101/2023.10.10.561733) <br />
+*Liang, Q., Dharmat, R., Owen, L., Shakoor, A., Li, Y., Kim, S., ... & Chen, R. (2019). Single-nuclei RNA-seq on human retinal tissue provides improved transcriptome profiling. Nature communications, 10(1), 5743.*<br />
+[https://www.nature.com/articles/s41467-019-12917-9](https://www.nature.com/articles/s41467-019-12917-9)<br />
+*Ratnapriya, R., Sosina, O. A., Starostik, M. R., Kwicklis, M., Kapphahn, R. J., Fritsche, L. G., ... & Swaroop, A. (2019). Retinal transcriptome and eQTL analyses identify genes associated with age-related macular degeneration. Nature genetics, 51(4), 606-610.*<br />
+[https://www.nature.com/articles/s41588-019-0351-9](https://www.nature.com/articles/s41588-019-0351-9)<br />
+*Hippen, A. A., Omran, D. K., Weber, L. M., Jung, E., Drapkin, R., Doherty, J. A., ... & Greene, C. S. (2023). Performance of computational algorithms to deconvolve heterogeneous bulk ovarian tumor tissue depends on experimental factors. Genome biology, 24(1), 239.*<br />
+[https://genomebiology.biomedcentral.com/articles/10.1186/s13059-023-03077-7](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-023-03077-7)<br />
+*Lee, S., Zhao, L., Rojas, C., Bateman, N. W., Yao, H., Lara, O. D., ... & Sood, A. K. (2020). Molecular analysis of clinically defined subsets of high-grade serous ovarian cancer. Cell reports, 31(2).*<br />
+[https://www.cell.com/cell-reports/fulltext/S2211-1247(20)30392-2](https://www.cell.com/cell-reports/fulltext/S2211-1247(20)30392-2)<br />
