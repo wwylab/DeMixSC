@@ -2,7 +2,7 @@
 
 DeMixSC is a generalizable framework designed to leverage a small benchmark dataset for bulk RNA-seq deconvolution.
 
-Please refer to our accepted **[manuscript at Genome Research](https://genome.cshlp.org/content/early/2024/11/22/gr.278822.123.abstract)** for details: 
+Please refer to our **[accepted manuscript at Genome Research](https://genome.cshlp.org/content/early/2024/11/22/gr.278822.123.abstract)** for details: 
 
 ## Overview
 
